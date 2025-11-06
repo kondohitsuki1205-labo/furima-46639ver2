@@ -1,24 +1,19 @@
 default: &default
-  encoding: utf8
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
 
 development:
   <<: *default
-  adapter: mysql2
-  username: root
-  password:
-  host: localhost
-  database: furima-46639ver2_development
+  database: furima_46639ver2_development
+  username: <%= ENV["PGUSER"] || ENV["USER"] || "postgres" %>
+  # host/port/password は未記載（←ソケット接続でパスワード不要）
 
 test:
   <<: *default
-  adapter: mysql2
-  username: root
-  password:
-  host: localhost
-  database: furima-46639ver2_test
+  database: furima_46639ver2_test
+  username: <%= ENV["PGUSER"] || ENV["USER"] || "postgres" %>
 
 production:
   <<: *default
-  adapter: postgresql
-  url: <%= ENV['DATABASE_URL'] %>
+  url: <%= ENV["DATABASE_URL"] %>
