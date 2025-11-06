@@ -1,8 +1,8 @@
-\#テーブル設計
+\# テーブル設計
 
 
 
-\##users テーブル
+\## users テーブル
 
 
 
@@ -28,7 +28,7 @@
 
 
 
-\###Association
+\### Association
 
 \- has\_many :items
 
@@ -38,7 +38,7 @@
 
 
 
-\##items テーブル
+\## items テーブル
 
 
 
@@ -66,7 +66,7 @@
 
 
 
-\###Association
+\### Association
 
 \- belongs\_to :user
 
@@ -88,7 +88,7 @@
 
 
 
-\##orders テーブル
+\## orders テーブル
 
 
 
@@ -102,7 +102,7 @@
 
 
 
-\###Association
+\### Association
 
 \- belongs\_to :user
 
@@ -114,7 +114,7 @@
 
 
 
-\##addresses テーブル
+\## addresses テーブル
 
 
 
@@ -138,7 +138,7 @@
 
 
 
-Association
+\### Association
 
 \- belongs\_to :order
 
