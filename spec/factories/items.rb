@@ -14,13 +14,13 @@ FactoryBot.define do
     price { 1000 }
 
     after(:build) do |item|
-      path = Rails.root.join("spec/fixtures/files/test.png")
+      path = Rails.root.join('spec/fixtures/files/test.png')
       raise "Fixture missing: #{path}" unless File.exist?(path)
 
       item.image.attach(
         io: File.open(path),
-        filename: "test.png",
-        content_type: "image/png"
+        filename: 'test.png',
+        content_type: 'image/png'
       )
     end
   end

@@ -13,7 +13,7 @@ class ItemsController < ApplicationController
     if @item.save
       redirect_to root_path
     else
-      flash.now[:alert] = "入力内容を確認してください。"
+      flash.now[:alert] = '入力内容を確認してください。'
       render :new, status: :unprocessable_entity
     end
   end

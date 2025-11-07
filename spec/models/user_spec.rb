@@ -49,7 +49,7 @@ RSpec.describe User, type: :model do
 
   context '要件の明示テスト' do
     it '重複したメールアドレスは登録できない' do
-      create(:user, email: 'dup@example.com')  # 既存ユーザー
+      create(:user, email: 'dup@example.com') # 既存ユーザー
       another = build(:user, email: 'dup@example.com')
       expect(another).to be_invalid
       expect(another.errors[:email]).to be_present
@@ -69,7 +69,7 @@ RSpec.describe User, type: :model do
 
     it '全角文字を含むパスワードでは登録できない' do
       # 全角を1文字でも含める
-      user.password = user.password_confirmation = "a1a1a１" # 最後が全角の「１」
+      user.password = user.password_confirmation = 'a1a1a１' # 最後が全角の「１」
       expect(user).to be_invalid
       expect(user.errors[:password]).to be_present
     end

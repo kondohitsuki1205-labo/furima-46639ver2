@@ -12,7 +12,7 @@ class User < ApplicationRecord
     validates :last_name, :first_name,
               format: { with: NAME_JP, message: 'は全角（漢字・ひらがな・カタカナ）のみで入力してください' }
     validates :last_name_kana, :first_name_kana,
-              format: { with: KATAKANA_JP,   message: 'は全角カタカナのみで入力してください' }
+              format: { with: KATAKANA_JP, message: 'は全角カタカナのみで入力してください' }
   end
 
   validates :password,
