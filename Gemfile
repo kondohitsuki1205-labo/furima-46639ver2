@@ -46,6 +46,8 @@ gem "bootsnap", require: false
 
 gem "devise", "~> 4.9"
 
+gem "active_hash", "~> 4.0"
+
 group :development, :test do
   gem "dotenv-rails"
 end

@@ -11,7 +11,14 @@
   </head>
 
   <body>
-    <%= render "shared/header" %>
+    <% hide_global_header =
+         content_for?(:no_global_header) ||
+         (defined?(devise_controller?) && devise_controller? &&
+            %w[sessions registrations passwords].include?(controller_name) &&
+            %w[new create edit].include?(action_name))
+    %>
+
+    <%= render "shared/header" unless hide_global_header %>
     <%= render "shared/flash"  %>
     <%= yield %>
   </body>
