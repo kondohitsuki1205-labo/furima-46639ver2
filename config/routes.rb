@@ -2,7 +2,7 @@ Rails.application.routes.draw do
   devise_for :users
   
   root "items#index"
-  resources :items, only: [:new, :create]
+  resources :items, only: [:index, :new, :create]
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
