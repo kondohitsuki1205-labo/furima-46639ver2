@@ -101,7 +101,7 @@ RSpec.describe Item, type: :model do
       expect(item.errors[:scheduled_delivery_id]).to be_present
     end
 
-    it "ユーザーが紐づいていないと保存できない" do
+    it 'ユーザーが紐づいていないと保存できない' do
       item.user = nil
       item.validate
       expect(item).to be_invalid
