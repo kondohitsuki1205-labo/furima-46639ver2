@@ -22,4 +22,5 @@ function mountPriceCalc() {
 }
 
 document.addEventListener("turbo:load", mountPriceCalc);
+document.addEventListener("turbo:render", mountPriceCalc);
 document.addEventListener("DOMContentLoaded", mountPriceCalc);
