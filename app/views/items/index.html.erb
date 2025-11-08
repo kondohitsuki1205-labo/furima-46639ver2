@@ -1,4 +1,3 @@
-<%= render "shared/header" %>
 <div class='main'>
 
   <%# 画面上部の「人生を変えるフリマアプリ」帯部分 %>
@@ -131,7 +130,7 @@
         <li class='list'>
 
           <%# ▼詳細ページ（show）が未実装ならリンクを無効化しておく %>
-          <%# <%= link_to item_path(item) do %> %>
+          <%#= link_to item_path(item) do %>
           <div class='item-img-content'>
             <%= image_tag(item.image.attached? ? item.image : "item-sample.png", class: "item-img") %>
 
@@ -147,7 +146,7 @@
               <%# ▼価格はカンマ区切り、配送料負担はActiveHash名を表示 %>
               <span>
                 <%= number_with_delimiter(item.price) %>円<br>
-                <%= ShippingFee.find(item.shipping_fee_id).name %>
+                <%= item.shipping_fee.name %>
               </span>
               <div class='star-btn'>
                 <%= image_tag "star.png", class:"star-icon" %>
@@ -155,7 +154,7 @@
               </div>
             </div>
           </div>
-          <%# <% end %> %> <%# ← リンク閉じタグもコメントアウト %>
+          <%# end %> <%# ← リンク閉じタグもコメントアウト %>
 
         </li>
       <% end %>
