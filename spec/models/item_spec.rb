@@ -71,18 +71,41 @@ RSpec.describe Item, type: :model do
       expect(item.errors[:price]).to be_present
     end
 
-    it "ActiveHashのIDが1（'---'）はNG" do
+    it "category_id が 1（'---'）だと保存できない" do
       item.category_id = 1
-      item.condition_id = 1
-      item.shipping_fee_id = 1
-      item.prefecture_id = 1
-      item.scheduled_delivery_id = 1
-      expect(item).to be_invalid
+      item.validate
       expect(item.errors[:category_id]).to be_present
+    end
+
+    it "condition_id が 1（'---'）だと保存できない" do
+      item.condition_id = 1
+      item.validate
       expect(item.errors[:condition_id]).to be_present
+    end
+
+    it "shipping_fee_id が 1（'---'）だと保存できない" do
+      item.shipping_fee_id = 1
+      item.validate
       expect(item.errors[:shipping_fee_id]).to be_present
+    end
+
+    it "prefecture_id が 1（'---'）だと保存できない" do
+      item.prefecture_id = 1
+      item.validate
       expect(item.errors[:prefecture_id]).to be_present
+    end
+
+    it "scheduled_delivery_id が 1（'---'）だと保存できない" do
+      item.scheduled_delivery_id = 1
+      item.validate
       expect(item.errors[:scheduled_delivery_id]).to be_present
+    end
+
+    it "ユーザーが紐づいていないと保存できない" do
+      item.user = nil
+      item.validate
+      expect(item).to be_invalid
+      expect(item.errors[:user]).to be_present
     end
   end
 end
