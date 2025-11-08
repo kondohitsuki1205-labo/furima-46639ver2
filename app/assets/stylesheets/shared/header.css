@@ -91,6 +91,8 @@
   color: #333333;
 }
 
+button.logout { background:none; border:0; padding:0; font:inherit; color:inherit; cursor:pointer; }
+
 .login {
   text-decoration: none;
   line-height: 32px;

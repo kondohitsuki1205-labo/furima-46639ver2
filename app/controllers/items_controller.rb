@@ -1,9 +1,12 @@
 class ItemsController < ApplicationController
   before_action :authenticate_user!, only: [:new, :create]
+  before_action :set_item, only: [:show]
 
   def index
     @items = Item.includes(image_attachment: :blob).order(created_at: :desc)
   end
+
+  def show; end
 
   def new
     @item = Item.new
@@ -14,12 +17,13 @@ class ItemsController < ApplicationController
     if @item.save
       redirect_to root_path
     else
-      flash.now[:alert] = '入力内容を確認してください。'
+      flash.now[:alert] = "入力内容を確認してください。"
       render :new, status: :unprocessable_entity
     end
   end
 
   private
+  def set_item = @item = Item.find(params[:id])
 
   def item_params
     params.require(:item).permit(

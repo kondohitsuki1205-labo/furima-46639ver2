@@ -129,8 +129,7 @@
       <% @items.each do |item| %>
         <li class='list'>
 
-          <%# ▼詳細ページ（show）が未実装ならリンクを無効化しておく %>
-          <%#= link_to item_path(item) do %>
+          <%= link_to item_path(item) do %>
           <div class='item-img-content'>
             <%= image_tag(item.image.attached? ? item.image : "item-sample.png", class: "item-img") %>
 
@@ -143,7 +142,6 @@
           <div class='item-info'>
             <h3 class='item-name'><%= item.name %></h3>
             <div class='item-price'>
-              <%# ▼価格はカンマ区切り、配送料負担はActiveHash名を表示 %>
               <span>
                 <%= number_with_delimiter(item.price) %>円<br>
                 <%= item.shipping_fee.name %>
@@ -154,7 +152,7 @@
               </div>
             </div>
           </div>
-          <%# end %> <%# ← リンク閉じタグもコメントアウト %>
+          <% end %>
 
         </li>
       <% end %>
