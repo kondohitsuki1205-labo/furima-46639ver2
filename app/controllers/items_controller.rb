@@ -23,6 +23,21 @@ class ItemsController < ApplicationController
     end
   end
 
+  def edit
+  end
+
+  def update
+    filtered_params = item_params
+    filtered_params.delete(:image) if params.dig(:item, :image).blank?
+
+    if @item.update(filtered_params)
+      redirect_to item_path(@item)
+    else
+      flash.now[:alert] = "入力内容を確認してください。"
+      render :edit, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def set_item = @item = Item.find(params[:id])
