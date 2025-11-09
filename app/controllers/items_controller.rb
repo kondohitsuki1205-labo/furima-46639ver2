@@ -38,7 +38,9 @@ class ItemsController < ApplicationController
 
   private
 
-  def set_item = @item = Item.find(params[:id])
+  def set_item
+  @item = Item.find(params[:id])
+  end
 
   def author_only
     redirect_to root_path unless current_user == @item.user
