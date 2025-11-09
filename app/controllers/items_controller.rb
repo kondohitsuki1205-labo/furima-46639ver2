@@ -28,10 +28,7 @@ class ItemsController < ApplicationController
   end
 
   def update
-    filtered_params = item_params
-    filtered_params.delete(:image) if params.dig(:item, :image).blank?
-
-    if @item.update(filtered_params)
+    if @item.update(item_params)
       redirect_to item_path(@item)
     else
       flash.now[:alert] = '入力内容を確認してください。'
