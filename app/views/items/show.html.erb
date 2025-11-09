@@ -27,26 +27,30 @@
       </span>
     </div>
 
-    <%# ▽購入機能実装前は常に未売却扱い %>
-    <% sold = false %>
+    <% if user_signed_in? %>
+     <% if current_user == @item.user %>
+       <%# 出品者向け（売却済みは後で活性化） %>
+       <% if !sold %>
+         <%#= link_to "商品の編集", edit_item_path(@item), class: "item-red-btn" %>
+         <span class="item-red-btn is-disabled" aria-disabled="true">商品の編集</span>
 
-      <% if user_signed_in? && current_user == @item.user && !sold %>
-        <%#= link_to "商品の編集", edit_item_path(@item), class: "item-red-btn" %>
-        <span class="item-red-btn is-disabled" aria-disabled="true">商品の編集</span>
+         <p class="or-text">or</p>
 
-        <p class="or-text">or</p>
+         <%#= link_to "削除",
+         <%#            item_path(@item),
+         <%#            data: { turbo_method: :delete },
+         <%#            class: "item-destroy" %>
+         <span class="item-destroy is-disabled" aria-disabled="true">削除</span>
+       <% end %>
 
-        <%#= link_to "削除",
-        <%#            item_path(@item),
-        <%#            data: { turbo_method: :delete},
-        <%#            class: "item-destroy" %>
-        <span class="item-destroy is-disabled" aria-disabled="true">削除</span>
+     <% else %>
+       <% if !sold %>
+         <%#= link_to "購入画面に進む", new_item_order_path(@item), class: "item-red-btn" %>
+         <span class="item-red-btn is-disabled" aria-disabled="true">購入画面に進む</span>
+       <% end %>
+     <% end %>
+    <% end %>
 
-      <% elsif user_signed_in? && current_user != @item.user && !sold %>
-        <%# 購入機能が整っている場合に有効化
-        <%#= link_to "購入画面に進む", item_orders_path(@item), class: "item-red-btn" %>
-        <span class="item-red-btn is-disabled" aria-disabled="true">購入画面に進む</span>
-      <% end %>
 
 
     <div class="item-explain-box">
