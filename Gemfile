@@ -48,6 +48,8 @@ gem "devise", "~> 4.9"
 
 gem "active_hash", "~> 4.0"
 
+gem 'payjp', '~> 1.1'
+
 group :development, :test do
   gem "dotenv-rails"
 end

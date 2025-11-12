@@ -1,14 +1,14 @@
+# app/controllers/items_controller.rb
 class ItemsController < ApplicationController
   before_action :authenticate_user!, only: [:new, :create, :edit, :update]
-  before_action :set_item, only: [:show, :edit, :update]
-  before_action :author_only, only: [:edit, :update]
+  before_action :set_item,          only: [:show, :edit, :update]
+  before_action :author_only,       only: [:edit, :update]
 
   def index
-    @items = Item.includes(image_attachment: :blob).order(created_at: :desc)
+    @items = Item.includes(:order, image_attachment: :blob).order(created_at: :desc)
   end
 
-  def show
-  end
+  def show; end
 
   def new
     @item = Item.new
@@ -24,8 +24,7 @@ class ItemsController < ApplicationController
     end
   end
 
-  def edit
-  end
+  def edit; end
 
   def update
     if @item.update(item_params)
@@ -37,13 +36,13 @@ class ItemsController < ApplicationController
   end
 
   private
-
   def set_item
-  @item = Item.find(params[:id])
+    @item = Item.find(params[:id])
   end
 
+  # ← ここを“1つだけ”残す（出品者かつ未売却のみ可）
   def author_only
-    redirect_to root_path unless current_user == @item.user
+    redirect_to root_path unless current_user == @item.user && @item.order.blank?
   end
 
   def item_params

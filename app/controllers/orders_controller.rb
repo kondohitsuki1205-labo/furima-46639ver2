@@ -10,7 +10,7 @@ class OrdersController < ApplicationController
   def create
     @order_address = OrderAddress.new(order_params)
     if @order_address.valid?
-      # ★ 次コミットでPAY.JP課金を実装する（pay_item）
+      pay_item!
       @order_address.save
       redirect_to root_path
     else
@@ -19,6 +19,7 @@ class OrdersController < ApplicationController
   end
 
   private
+
   def set_item
     @item = Item.find(params[:item_id])
   end
@@ -30,5 +31,13 @@ class OrdersController < ApplicationController
   def order_params
     params.require(:order_address).permit(:postal_code, :prefecture_id, :city, :block, :building, :phone_number)
           .merge(user_id: current_user.id, item_id: @item.id, token: params[:token])
+  end
+
+  def pay_item!
+    token = order_params[:token]
+    raise "カード情報が取得できませんでした" if token.blank?
+
+    Payjp.api_key = Rails.application.credentials.dig(:payjp, :secret_key) || ENV["PAYJP_SECRET_KEY"]
+    Payjp::Charge.create(amount: @item.price, card: token, currency: 'jpy')
   end
 end

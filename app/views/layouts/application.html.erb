@@ -8,6 +8,10 @@
 
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+
+    <script src="https://js.pay.jp/v2/"></script>
+    <meta name="payjp-public-key"
+        content="<%= Rails.application.credentials.dig(:payjp, :public_key) || ENV['PAYJP_PUBLIC_KEY'] %>">
   </head>
 
   <body>

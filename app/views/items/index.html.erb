@@ -132,11 +132,9 @@
           <%= link_to item_path(item) do %>
           <div class='item-img-content'>
             <%= image_tag(item.image.attached? ? item.image : "item-sample.png", class: "item-img") %>
-
-            <%# ▼購入機能実装後に有効化
-            <%# if item.respond_to?(:sold_out?) && item.sold_out? %>
-            <%#   <div class='sold-out'><span>Sold Out!!</span></div> %>
-            <%# end %>
+            <% if item.sold_out? %>
+            <div class='sold-out'><span>Sold Out!!</span></div>
+            <% end %>
           </div>
 
           <div class='item-info'>
