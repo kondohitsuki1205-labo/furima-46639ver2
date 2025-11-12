@@ -2,6 +2,8 @@
 class OrdersController < ApplicationController
   before_action :authenticate_user!
   before_action :set_item
+  before_action :redirect_if_self_item
+  before_action :redirect_if_sold_out
 
   def index
     @order_address = OrderAddress.new
@@ -18,7 +20,7 @@ class OrdersController < ApplicationController
     else
       # 失敗理由のログ（デバッグに有用）
       Rails.logger.info("[ORDER_ERRORS] #{@order_address.errors.full_messages.join(', ')}")
-      render :index, status: :unprocessable_entity
+      render :index, status: :unprocessable_content
     end
   end
 
@@ -26,6 +28,14 @@ class OrdersController < ApplicationController
 
   def set_item
     @item = Item.find(params[:item_id])
+  end
+
+  def redirect_if_self_item
+    redirect_to root_path if current_user == @item.user
+  end
+
+  def redirect_if_sold_out
+    redirect_to root_path if @item.order.present?
   end
 
   def order_params
