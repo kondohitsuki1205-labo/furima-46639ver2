@@ -5,7 +5,7 @@ RSpec.describe OrderAddress, type: :model do
       postal_code: '123-4567',
       prefecture_id: 2,
       city: '渋谷区',
-      block: '神南1-1-1',  # ← Addressのカラムが addresses の場合はここを addresses: に変える（後述）
+      block: '神南1-1-1', # ← Addressのカラムが addresses の場合はここを addresses: に変える（後述）
       building: 'XXビル',
       phone_number: '0901234567',
       token: 'tok_abc',
@@ -44,10 +44,10 @@ RSpec.describe OrderAddress, type: :model do
 
       it 'saveでOrderとAddressが作成される' do
         oa = OrderAddress.new(save_attrs)
-        expect {
+        expect do
           expect(oa.save).to eq true
-        }.to change(Order, :count).by(1)
-         .and change(Address, :count).by(1)
+        end.to change(Order, :count).by(1)
+                                    .and change(Address, :count).by(1)
       end
     end
   end

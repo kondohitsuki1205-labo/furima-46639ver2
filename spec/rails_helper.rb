@@ -45,7 +45,7 @@ RSpec.configure do |config|
   config.include Devise::Test::IntegrationHelpers, type: :request
   # Devise のシステムスペック用ヘルパー (これは残す)
   config.include Devise::Test::IntegrationHelpers, type: :system
-  
+
   # --- 競合するため Warden 関連の記述は削除 (正しい状態) ---
   # config.include Warden::Test::Helpers
 

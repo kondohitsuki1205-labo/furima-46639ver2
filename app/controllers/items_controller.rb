@@ -8,7 +8,8 @@ class ItemsController < ApplicationController
     @items = Item.includes(:order, image_attachment: :blob).order(created_at: :desc)
   end
 
-  def show; end
+  def show
+  end
 
   def new
     @item = Item.new
@@ -24,7 +25,8 @@ class ItemsController < ApplicationController
     end
   end
 
-  def edit; end
+  def edit
+  end
 
   def update
     if @item.update(item_params)
@@ -36,6 +38,7 @@ class ItemsController < ApplicationController
   end
 
   private
+
   def set_item
     @item = Item.find(params[:id])
   end

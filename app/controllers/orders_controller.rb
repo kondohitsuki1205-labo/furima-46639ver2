@@ -12,7 +12,7 @@ class OrdersController < ApplicationController
     @order_address = OrderAddress.new(order_params)
 
     if @order_address.valid?
-      pay_item               # ↓テストでは無害化（次章）
+      pay_item # ↓テストでは無害化（次章）
       @order_address.save
       redirect_to root_path
     else
@@ -35,11 +35,12 @@ class OrdersController < ApplicationController
   end
 
   def pay_item
-    return if Rails.env.test?  # ← テストでは外部決済をスキップ
+    return if Rails.env.test? # ← テストでは外部決済をスキップ
+
     Payjp.api_key = ENV['PAYJP_SECRET_KEY']
     Payjp::Charge.create(
       amount: @item.price,
-      card:   order_params[:token],
+      card: order_params[:token],
       currency: 'jpy'
     )
   end
