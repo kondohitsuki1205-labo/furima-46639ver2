@@ -8,6 +8,7 @@ class User < ApplicationRecord
   PASSWORD_FMT = /\A(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+\z/
 
   has_many :orders, dependent: :destroy
+  has_many :items, dependent: :destroy
 
   with_options presence: true do
     validates :nickname, :birth_date

@@ -51,6 +51,9 @@ RSpec.configure do |config|
       File.binwrite(path, Base64.decode64(png_base64))
     end
   end
+  config.after(:each) do
+    ActiveRecord::Base.clear_active_connections!
+  end
 end
 
 # Shoulda Matchers
