@@ -1,8 +1,9 @@
 # app/controllers/items_controller.rb
 class ItemsController < ApplicationController
-  before_action :authenticate_user!, only: [:new, :create, :edit, :update]
-  before_action :set_item,          only: [:show, :edit, :update]
-  before_action :author_only,       only: [:edit, :update]
+  before_action :authenticate_user!, only: [:new, :create, :edit, :update, :destroy]
+  before_action :set_item,          only: [:show, :edit, :update, :destroy]
+  before_action :author_only,       only: [:edit, :update, :destroy]
+  before_action :reject_if_sold_out!, only: [:edit, :update, :destroy]
 
   def index
     @items = Item.includes(:order, image_attachment: :blob).order(created_at: :desc)
@@ -37,6 +38,14 @@ class ItemsController < ApplicationController
     end
   end
 
+  def destroy
+    if @item.destroy
+      redirect_to root_path, notice: '商品を削除しました。'
+    else
+      redirect_to item_path(@item), alert: '削除に失敗しました。'
+    end
+  end
+
   private
 
   def set_item
@@ -53,5 +62,9 @@ class ItemsController < ApplicationController
       :image, :name, :description, :category_id, :condition_id,
       :shipping_fee_id, :prefecture_id, :scheduled_delivery_id, :price
     ).merge(user_id: current_user.id)
+  end
+
+  def reject_if_sold_out!
+    redirect_to root_path if @item.order.present?
   end
 end

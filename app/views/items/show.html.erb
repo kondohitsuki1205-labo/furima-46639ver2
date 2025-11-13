@@ -29,22 +29,22 @@
       </span>
     </div>
 
-    <% if signed_in %>
-      <% if author %>
-        <% unless sold %>
-          <%= link_to "商品の編集", edit_item_path(@item), class: "item-red-btn" %>
-          <p class="or-text">or</p>
-          <%# 削除は未実装なのでダミー %>
-          <span class="item-destroy is-disabled" aria-disabled="true">削除</span>
-        <% end %>
-      <% else %>
-        <% unless sold %>
-          <%= link_to "購入画面に進む",
-                      item_orders_path(@item),
-                      class: "item-red-btn" %>
-        <% end %>
-      <% end %>
+    <% sold  = @item.order.present? %>
+<% owner = user_signed_in? && current_user == @item.user %>
+
+<% if user_signed_in? %>
+  <% if owner %>
+    <% unless sold %>
+      <%= link_to '商品の編集', edit_item_path(@item), class: 'item-red-btn' %>
+      <p class="or-text">or</p>
+      <%= link_to '削除', item_path(@item), data: { turbo_method: :delete }, class: 'item-destroy' %>
     <% end %>
+  <% else %>
+    <% unless sold %>
+      <%= link_to '購入画面に進む', item_orders_path(@item), class: 'item-red-btn' %>
+    <% end %>
+  <% end %>
+<% end %>
 
 
 
