@@ -1,35 +1,34 @@
 let _payjp = null;
 let _elements = null;
 
-document.addEventListener('turbo:load', mountPayjp);
+document.addEventListener('turbo:load',  mountPayjp);
 document.addEventListener('turbo:render', mountPayjp);
 
 function mountPayjp() {
   const form = document.getElementById('charge-form');
   if (!form) return;
 
-  // --- 重複バインド対策：前回の submit ハンドラを外す ---
+  // 既存ハンドラを外す（重複送信防止）
   if (form._payjpOnSubmit) {
     form.removeEventListener('submit', form._payjpOnSubmit);
     form._payjpOnSubmit = null;
   }
 
-  // --- 既に mount 済みの Elements があれば unmount して空に ---
-  const hosts = ['number-form', 'expiry-form', 'cvc-form'];
-  hosts.forEach((id) => {
+  // 既存のElementsをアンマウント（turbo再描画対応）
+  ['number-form', 'expiry-form', 'cvc-form'].forEach((id) => {
     const host = document.getElementById(id);
     if (host) host.innerHTML = '';
   });
 
-  // --- 公開鍵 & ライブラリ確認 ---
+  // 公開鍵とSDKの存在確認
   const pk = document.querySelector('meta[name="payjp-public-key"]')?.content;
   if (!pk || !window.Payjp) return;
 
-  // --- Payjp / Elements を1度だけ作り、以後は再利用 ---
-  if (!_payjp) _payjp = Payjp(pk);
+  // Payjp/Elementsは1度だけ生成して使い回し
+  if (!_payjp)    _payjp = Payjp(pk);
   if (!_elements) _elements = _payjp.elements();
 
-  // --- 新しい Elements を生成して mount ---
+  // 新規Elementsを用意してマウント
   const numberEl = _elements.create('cardNumber');
   const expiryEl = _elements.create('cardExpiry');
   const cvcEl    = _elements.create('cardCvc');
@@ -38,28 +37,39 @@ function mountPayjp() {
   expiryEl.mount('#expiry-form');
   cvcEl.mount('#cvc-form');
 
-  // フォーム送信時の処理
+  // 送信時ハンドラ
   const onSubmit = async (e) => {
     e.preventDefault();
     const btn = form.querySelector('input[type="submit"],button[type="submit"]');
     if (btn) btn.disabled = true;
 
     try {
-      // Elements からトークン生成
+      // カード番号Elementからトークン生成
       const { id, error } = await _payjp.createToken(numberEl);
 
+      // ---- ここがエラー時の処理（要件どおり反映）----
       if (error) {
-        // ★カードエラーはサーバへ送らない（422防止）。
-        //   ここで入力継続できるようにするだけ。
         if (btn) btn.disabled = false;
-        // 既存トークンは無効化
-        const tokenInput = document.getElementById('token');
-        if (tokenInput) tokenInput.value = '';
-        console.warn('[PAYJP] card error:', error);
+
+        // 空トークンを必ず送って、Rails側で "Token can't be blank" を出す
+        let tokenInput = document.getElementById('token');
+        if (!tokenInput) {
+          tokenInput = document.createElement('input');
+          tokenInput.type = 'hidden';
+          tokenInput.name = 'order_address[token]';
+          tokenInput.id   = 'token';
+          form.appendChild(tokenInput);
+        }
+        tokenInput.value = '';
+
+        // 再帰防止のため一旦ハンドラを外してから送信 → 422で戻り、エラー表示
+        form.removeEventListener('submit', onSubmit);
+        form.submit();
         return;
       }
+      // ---- /エラー時 ----
 
-      // hidden を用意してトークンを格納
+      // 成功：hiddenにトークンを詰めて送信
       let tokenInput = document.getElementById('token');
       if (!tokenInput) {
         tokenInput = document.createElement('input');
@@ -70,11 +80,11 @@ function mountPayjp() {
       }
       tokenInput.value = id;
 
-      // 送信ハンドラを一旦外してから通常 submit
+      // 再帰防止してから通常送信
       form.removeEventListener('submit', onSubmit);
       form.submit();
     } finally {
-      // 何もしない（必要ならここでローディング解除等）
+      // 必要ならここでローディング解除など
     }
   };
 
