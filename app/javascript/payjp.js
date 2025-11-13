@@ -1,75 +1,65 @@
-// app/javascript/payjp.js
-let payjpCtx = null; // { form, numberEl, expiryEl, cvcEl, onSubmit }
+let _payjp = null;
+let _elements = null;
 
-function teardownPayjp() {
-  if (!payjpCtx) return;
-  const { numberEl, expiryEl, cvcEl, form, onSubmit } = payjpCtx;
-  try { numberEl?.unmount?.(); } catch (_) {}
-  try { expiryEl?.unmount?.(); } catch (_) {}
-  try { cvcEl?.unmount?.(); } catch (_) {}
-  if (form && onSubmit) form.removeEventListener('submit', onSubmit);
-  payjpCtx = null;
-
-  // カード欄だけ初期化（Turboキャッシュ対策）
-  ['number-form', 'expiry-form', 'cvc-form'].forEach((id) => {
-    const host = document.getElementById(id);
-    if (host) host.innerHTML = '';
-  });
-  const tokenInput = document.getElementById('token');
-  if (tokenInput) tokenInput.value = '';
-  const ce = document.getElementById('card-errors');
-  if (ce) ce.textContent = '';
-}
+document.addEventListener('turbo:load', mountPayjp);
+document.addEventListener('turbo:render', mountPayjp);
 
 function mountPayjp() {
   const form = document.getElementById('charge-form');
   if (!form) return;
 
-  // 既存を必ず破棄してから作り直す（「既にインスタンス化されています」対策）
-  teardownPayjp();
+  // --- 重複バインド対策：前回の submit ハンドラを外す ---
+  if (form._payjpOnSubmit) {
+    form.removeEventListener('submit', form._payjpOnSubmit);
+    form._payjpOnSubmit = null;
+  }
 
-  const numberHost = document.getElementById('number-form');
-  const expiryHost = document.getElementById('expiry-form');
-  const cvcHost    = document.getElementById('cvc-form');
-  if (!numberHost || !expiryHost || !cvcHost) return;
+  // --- 既に mount 済みの Elements があれば unmount して空に ---
+  const hosts = ['number-form', 'expiry-form', 'cvc-form'];
+  hosts.forEach((id) => {
+    const host = document.getElementById(id);
+    if (host) host.innerHTML = '';
+  });
 
+  // --- 公開鍵 & ライブラリ確認 ---
   const pk = document.querySelector('meta[name="payjp-public-key"]')?.content;
   if (!pk || !window.Payjp) return;
 
-  const payjp    = Payjp(pk);
-  const elements = payjp.elements();
+  // --- Payjp / Elements を1度だけ作り、以後は再利用 ---
+  if (!_payjp) _payjp = Payjp(pk);
+  if (!_elements) _elements = _payjp.elements();
 
-  const numberEl = elements.create('cardNumber');
-  const expiryEl = elements.create('cardExpiry');
-  const cvcEl    = elements.create('cardCvc');
+  // --- 新しい Elements を生成して mount ---
+  const numberEl = _elements.create('cardNumber');
+  const expiryEl = _elements.create('cardExpiry');
+  const cvcEl    = _elements.create('cardCvc');
 
   numberEl.mount('#number-form');
   expiryEl.mount('#expiry-form');
   cvcEl.mount('#cvc-form');
 
-  const ce = document.getElementById('card-errors');
-
+  // フォーム送信時の処理
   const onSubmit = async (e) => {
     e.preventDefault();
-
     const btn = form.querySelector('input[type="submit"],button[type="submit"]');
     if (btn) btn.disabled = true;
-    if (ce) ce.textContent = '';
 
     try {
-      // ① クライアント側：カードトークン化
-      const { id, error } = await payjp.createToken(numberEl);
+      // Elements からトークン生成
+      const { id, error } = await _payjp.createToken(numberEl);
 
       if (error) {
-        // 失敗→サーバ送信しない。カード欄だけ初期化して再マウント＆エラー表示
+        // ★カードエラーはサーバへ送らない（422防止）。
+        //   ここで入力継続できるようにするだけ。
         if (btn) btn.disabled = false;
-        if (ce) ce.textContent = error.message || 'カード情報を確認してください。';
-        teardownPayjp();
-        mountPayjp();
+        // 既存トークンは無効化
+        const tokenInput = document.getElementById('token');
+        if (tokenInput) tokenInput.value = '';
+        console.warn('[PAYJP] card error:', error);
         return;
       }
 
-      // 成功→hiddenに詰めて送信（以降は②サーバ側の住所等バリデーション）
+      // hidden を用意してトークンを格納
       let tokenInput = document.getElementById('token');
       if (!tokenInput) {
         tokenInput = document.createElement('input');
@@ -80,31 +70,14 @@ function mountPayjp() {
       }
       tokenInput.value = id;
 
+      // 送信ハンドラを一旦外してから通常 submit
+      form.removeEventListener('submit', onSubmit);
       form.submit();
-    } catch {
-      if (btn) btn.disabled = false;
-      if (ce) ce.textContent = '通信エラーが発生しました。時間をおいて再度お試しください。';
-      teardownPayjp();
-      mountPayjp();
+    } finally {
+      // 何もしない（必要ならここでローディング解除等）
     }
   };
 
   form.addEventListener('submit', onSubmit);
-  payjpCtx = { form, numberEl, expiryEl, cvcEl, onSubmit };
+  form._payjpOnSubmit = onSubmit;
 }
-
-// Turboライフサイクル：ページ遷移/再描画ごとに安全に再初期化
-document.addEventListener('turbo:load',   mountPayjp);
-document.addEventListener('turbo:render', mountPayjp);
-document.addEventListener('turbo:before-cache', teardownPayjp);
-
-// サーバ側422（住所などの検証エラー）で戻った時はカード欄だけ空にして再マウント
-document.addEventListener('turbo:submit-end', (e) => {
-  const form = document.getElementById('charge-form');
-  if (!form) return;
-  if (e.target !== form) return;
-  if (e.detail?.success === false) {
-    teardownPayjp();
-    mountPayjp();
-  }
-});
