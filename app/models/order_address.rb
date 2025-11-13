@@ -13,6 +13,7 @@ class OrderAddress
 
   def save
     return false unless valid?
+
     ActiveRecord::Base.transaction do
       order = Order.create!(user_id: user_id, item_id: item_id)
       Address.create!(

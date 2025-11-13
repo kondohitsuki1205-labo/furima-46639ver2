@@ -44,10 +44,11 @@ class OrdersController < ApplicationController
 
   def pay_item
     return if Rails.env.test? # テスト時は外部決済を実行しない
+
     Payjp.api_key = ENV['PAYJP_SECRET_KEY']
     Payjp::Charge.create(
-      amount:   @item.price,
-      card:     order_params[:token],
+      amount: @item.price,
+      card: order_params[:token],
       currency: 'jpy'
     )
   end

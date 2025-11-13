@@ -8,15 +8,15 @@ RSpec.describe OrderAddress, type: :model do
 
   let(:base_attrs) do
     {
-      postal_code:   '123-4567',
+      postal_code: '123-4567',
       prefecture_id: 2,
-      city:          '渋谷区',
-      block:         '神南1-1-1', # schema.rbのカラム名が block なので block のまま
-      building:      'XXビル',
-      phone_number:  '0901234567', # 10桁でもOK判定用の初期値
-      token:         'tok_test_abc',
-      user_id:       buyer.id,
-      item_id:       item.id
+      city: '渋谷区',
+      block: '神南1-1-1', # schema.rbのカラム名が block なので block のまま
+      building: 'XXビル',
+      phone_number: '0901234567', # 10桁でもOK判定用の初期値
+      token: 'tok_test_abc',
+      user_id: buyer.id,
+      item_id: item.id
     }
   end
 
@@ -125,7 +125,7 @@ RSpec.describe OrderAddress, type: :model do
       end
     end
 
-        context '購入できないとき（追加のフォーマット検証）' do
+    context '購入できないとき（追加のフォーマット検証）' do
       it '都道府県がnilだと無効' do
         oa = OrderAddress.new(base_attrs.merge(prefecture_id: nil))
         expect(oa).to be_invalid
@@ -166,20 +166,20 @@ RSpec.describe OrderAddress, type: :model do
     context '保存失敗時は副作用なし' do
       it '無効なときはOrder/Addressが増えない' do
         oa = OrderAddress.new(base_attrs.merge(postal_code: '1234567')) # ハイフン無しで無効
-        expect {
+        expect do
           expect(oa.save).to eq false
-        }.to not_change(Order, :count)
-         .and not_change(Address, :count)
+        end.to not_change(Order, :count)
+          .and not_change(Address, :count)
       end
     end
 
     context '保存処理（副作用）' do
       it 'saveでOrderとAddressが作成される' do
         oa = OrderAddress.new(base_attrs)
-        expect {
+        expect do
           expect(oa.save).to eq true
-        }.to change(Order, :count).by(1)
-         .and change(Address, :count).by(1)
+        end.to change(Order, :count).by(1)
+                                    .and change(Address, :count).by(1)
 
         order   = Order.order(:created_at).last
         address = Address.order(:created_at).last

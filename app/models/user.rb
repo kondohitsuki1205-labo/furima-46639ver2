@@ -21,5 +21,4 @@ class User < ApplicationRecord
   validates :password,
             format: { with: PASSWORD_FMT, message: 'は英字と数字の両方を含めてください' },
             allow_nil: true
-  
 end
