@@ -4,57 +4,44 @@ require_relative '../config/environment'
 abort('The Rails environment is running in production mode!') if Rails.env.production?
 
 require 'rspec/rails'
+require 'devise'
 
-# PNG生成のために追加
+# PNG生成に使用
 require 'base64'
 require 'fileutils'
 
-# データベースマイグレーションの確認
+# pending migration の検出
 begin
   ActiveRecord::Migration.maintain_test_schema!
 rescue ActiveRecord::PendingMigrationError => e
   abort e.to_s.strip
 end
 
-# --- ▼▼▼ ここを修正（コメントを外して有効化）▼▼▼ ---
-# spec/support 以下のファイルを再帰的に読み込む (sign_in に必須)
+# spec/support を再帰的に読み込む（Deviseの追加ヘルパ等がある場合に必須）
 Dir[Rails.root.join('spec', 'support', '**', '*.rb')].sort.each { |f| require f }
-# --- ▲▲▲ ここまで修正 ▲▲▲ ---
-
-require 'devise'
 
 RSpec.configure do |config|
-  # fixtureのパス
-  config.fixture_paths = [
-    Rails.root.join('spec/fixtures')
-  ]
+  # fixture の場所（単数）
+  config.fixture_path = Rails.root.join('spec/fixtures').to_s
 
-  # ★ sign_in を機能させるために必須
+  # DBをトランザクションで巻く（Requestでも安定運用）
   config.use_transactional_fixtures = true
 
-  # ファイルパスからスペックのタイプを自動推論
+  # ファイルパスから spec type を自動推論（model/request/system等）
   config.infer_spec_type_from_file_location!
 
-  # Rails特有のバックトレースをフィルタリング
+  # Rails 由来のバックトレースを非表示
   config.filter_rails_from_backtrace!
 
-  # FactoryBot の省略記法（create, build など）
+  # FactoryBot の省略記法（build/create等）
   config.include FactoryBot::Syntax::Methods
 
-  # Devise のリクエストスペック用ヘルパー (sign_in を提供) - これを有効化
+  # Devise ヘルパー：Request/System で sign_in を使う
   config.include Devise::Test::IntegrationHelpers, type: :request
-  # Devise のシステムスペック用ヘルパー (これは残す)
   config.include Devise::Test::IntegrationHelpers, type: :system
 
-  # --- 競合するため Warden 関連の記述は削除 (正しい状態) ---
-  # config.include Warden::Test::Helpers
-
-  # config.before(:suite) で設定を統合
+  # Suite 前に1x1 PNGを用意（画像必須Factory向け）
   config.before(:suite) do
-    # --- 競合するため Warden 関連の記述は削除 (正しい状態) ---
-    # Warden.test_mode!
-
-    # 2. test.png の自動生成
     dir = Rails.root.join('spec/fixtures/files')
     FileUtils.mkdir_p(dir)
     path = dir.join('test.png')
@@ -63,13 +50,10 @@ RSpec.configure do |config|
       png_base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO0YFz0AAAAASUVORK5CYII='
       File.binwrite(path, Base64.decode64(png_base64))
     end
-  end # <--- config.before(:suite) を閉じる 'end'
+  end
+end
 
-  # --- 競合するため Warden 関連の記述は削除 (正しい状態) ---
-  # config.after(:each) { Warden.test_reset! }
-end # <--- RSpec.configure を閉じる 'end'
-
-# Shoulda Matchers の設定
+# Shoulda Matchers
 Shoulda::Matchers.configure do |config|
   config.integrate do |with|
     with.test_framework :rspec

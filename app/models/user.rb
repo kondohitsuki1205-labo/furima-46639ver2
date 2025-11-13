@@ -7,6 +7,8 @@ class User < ApplicationRecord
   KATAKANA_JP  = /\A[\p{Katakana}ー]+\z/
   PASSWORD_FMT = /\A(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+\z/
 
+  has_many :orders, dependent: :destroy
+
   with_options presence: true do
     validates :nickname, :birth_date
     validates :last_name, :first_name,
@@ -18,4 +20,5 @@ class User < ApplicationRecord
   validates :password,
             format: { with: PASSWORD_FMT, message: 'は英字と数字の両方を含めてください' },
             allow_nil: true
+  
 end
