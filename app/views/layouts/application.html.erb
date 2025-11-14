@@ -6,12 +6,17 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
-    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-    <%= javascript_importmap_tags %>
-
-    <script src="https://js.pay.jp/v2/"></script>
+    <!-- 公開鍵メタは先に -->
     <meta name="payjp-public-key"
-        content="<%= Rails.application.credentials.dig(:payjp, :public_key) || ENV['PAYJP_PUBLIC_KEY'] %>">
+          content="<%= Rails.application.credentials.dig(:payjp, :public_key) || ENV['PAYJP_PUBLIC_KEY'] %>">
+
+    <!-- PAY.JP SDK を先に読み込む -->
+    <script src="https://js.pay.jp/v2/"></script>
+
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+
+    <!-- 最後に importmap（ここから application.js → payjp.js が実行される） -->
+    <%= javascript_importmap_tags %>
   </head>
 
   <body>
