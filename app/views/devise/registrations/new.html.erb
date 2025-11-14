@@ -79,10 +79,11 @@
                     class:'select-birth',
                     id:"birth-date",
                     use_month_numbers: true,
-                    include_blank: false,
+                    include_blank: true,
                     start_year: 1930,
                     end_year: (Time.now.year - 5),
                     date_separator: '%s'),
+                    default: nil,
                   "<p> 年 </p>", "<p> 月 </p>") + "<p> 日 </p>" %>
     </div>
     <p class='info-text'>※ 本人情報は正しく入力してください。会員登録後、修正するにはお時間を頂く場合があります。</p>
