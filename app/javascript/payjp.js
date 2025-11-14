@@ -1,57 +1,53 @@
-(() => {
-  // 名前空間（他コードと衝突しないように）
-  const NS = (window.PayjpMount ||= {});
-  let payjp = null;
-  let elements = null;
+let _payjp = null;
+let _elements = null;
 
-  // Turboイベントにフック
-  document.addEventListener('turbo:load', mount);
-  document.addEventListener('turbo:render', mount);
-  document.addEventListener('turbo:before-cache', cleanup);
+document.addEventListener('turbo:load',  mountPayjp);
+document.addEventListener('turbo:render', mountPayjp);
 
-  // 公開：他から必要なら呼べるように
-  NS.mount = mount;
-  NS.cleanup = cleanup;
+// Turboがページをキャッシュする直前に、埋め込みDOMを空にしないと
+// 復元時（preview or render）に「既にインスタンス化されています」→未描画 になりがち
+document.addEventListener('turbo:before-cache', () => {
+  const form = document.getElementById('charge-form');
+  if (form && form._payjpOnSubmit) {
+    form.removeEventListener('submit', form._payjpOnSubmit);
+    form._payjpOnSubmit = null;
+  }
+  ['number-form','expiry-form','cvc-form'].forEach((id) => {
+    const host = document.getElementById(id);
+    if (host) host.innerHTML = '';
+  });
+  // hidden token もいったん空に（エラー後の戻りで残骸を避ける）
+  const token = document.getElementById('token');
+  if (token) token.value = '';
+});
 
-  function cleanup() {
-    const form = document.getElementById('charge-form');
-    if (form && form._payjpOnSubmit) {
-      form.removeEventListener('submit', form._payjpOnSubmit);
-      form._payjpOnSubmit = null;
-    }
-    // Elements のホストだけ空に（他DOMは触らない）
-    ['number-form', 'expiry-form', 'cvc-form'].forEach((id) => {
-      const host = document.getElementById(id);
-      if (host) host.innerHTML = '';
-    });
-    // フラグを下ろす
-    const f = document.getElementById('charge-form');
-    if (f) f.dataset.payjpMounted = '0';
+function mountPayjp() {
+  const form = document.getElementById('charge-form');
+  if (!form) return;
+
+  // 直前のsubmitハンドラを外す（重複送信回避）
+  if (form._payjpOnSubmit) {
+    form.removeEventListener('submit', form._payjpOnSubmit);
+    form._payjpOnSubmit = null;
   }
 
-  function mount() {
-    const form = document.getElementById('charge-form');
-    const numberHost = document.getElementById('number-form');
-    const expiryHost = document.getElementById('expiry-form');
-    const cvcHost    = document.getElementById('cvc-form');
-    if (!form || !numberHost || !expiryHost || !cvcHost) return;
+  // preview→render の順で複数回呼ばれてもOKにするため、必ずホストを空に
+  ['number-form','expiry-form','cvc-form'].forEach((id) => {
+    const host = document.getElementById(id);
+    if (host) host.innerHTML = '';
+  });
 
-    // PAY.JP SDK / 公開鍵チェック（未読込なら何もしない＝他機能に影響なし）
-    const pk = document.querySelector('meta[name="payjp-public-key"]')?.content;
-    if (!pk || !window.Payjp) return;
+  const pk = document.querySelector('meta[name="payjp-public-key"]')?.content;
+  if (!pk || !window.Payjp) return;
 
-    // 二重マウント防止（Turboで複数回呼ばれてもOK）
-    if (form.dataset.payjpMounted === '1') return;
+  if (!_payjp)    _payjp = Payjp(pk);
+  if (!_elements) _elements = _payjp.elements();
 
-    // 既存をきれいにしてから再マウント
-    cleanup();
-
-    if (!payjp)    payjp = Payjp(pk);
-    if (!elements) elements = payjp.elements();
-
-    const numberEl = elements.create('cardNumber');
-    const expiryEl = elements.create('cardExpiry');
-    const cvcEl    = elements.create('cardCvc');
+  // DOM反映直後にmountしないと、たまにホスト未準備のタイミングで失敗することがあるので rAF で次フレームに回す
+  requestAnimationFrame(() => {
+    const numberEl = _elements.create('cardNumber');
+    const expiryEl = _elements.create('cardExpiry');
+    const cvcEl    = _elements.create('cardCvc');
 
     numberEl.mount('#number-form');
     expiryEl.mount('#expiry-form');
@@ -59,47 +55,50 @@
 
     const onSubmit = async (e) => {
       e.preventDefault();
-
-      // 他のsubmitハンドラには触らない方針だが、
-      // 二重送信は避けたいのでボタンだけ保守的に無効化
       const btn = form.querySelector('input[type="submit"],button[type="submit"]');
       if (btn) btn.disabled = true;
 
       try {
-        const { id, error } = await payjp.createToken(numberEl);
+        const { id, error } = await _payjp.createToken(numberEl);
 
-        // エラー時：空トークンを付けて送信 → Rails側で "Token can't be blank" を表示
         if (error) {
+          // ▼バリデーション表示のために空トークンを送る（「Token can't be blank」）
           if (btn) btn.disabled = false;
-          ensureTokenInput(form).value = '';
+
+          let tokenInput = document.getElementById('token');
+          if (!tokenInput) {
+            tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = 'order_address[token]';
+            tokenInput.id   = 'token';
+            form.appendChild(tokenInput);
+          }
+          tokenInput.value = '';
+
           form.removeEventListener('submit', onSubmit);
           form.submit();
           return;
         }
 
-        // 成功：hiddenにトークンを詰めて送信
-        ensureTokenInput(form).value = id;
+        // 成功時：hidden に格納して送信
+        let tokenInput = document.getElementById('token');
+        if (!tokenInput) {
+          tokenInput = document.createElement('input');
+          tokenInput.type = 'hidden';
+          tokenInput.name = 'order_address[token]';
+          tokenInput.id   = 'token';
+          form.appendChild(tokenInput);
+        }
+        tokenInput.value = id;
+
         form.removeEventListener('submit', onSubmit);
         form.submit();
       } finally {
-        // 必要に応じてローディング解除などをここで
+        // 必要ならここでローディング解除など
       }
     };
 
     form.addEventListener('submit', onSubmit);
     form._payjpOnSubmit = onSubmit;
-    form.dataset.payjpMounted = '1';
-  }
-
-  function ensureTokenInput(form) {
-    let tokenInput = document.getElementById('token');
-    if (!tokenInput) {
-      tokenInput = document.createElement('input');
-      tokenInput.type = 'hidden';
-      tokenInput.name = 'order_address[token]'; // ← strong paramsと一致
-      tokenInput.id   = 'token';
-      form.appendChild(tokenInput);
-    }
-    return tokenInput;
-  }
-})();
+  });
+}
