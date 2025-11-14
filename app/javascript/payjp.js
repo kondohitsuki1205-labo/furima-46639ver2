@@ -1,3 +1,4 @@
+// app/javascript/payjp.js
 let _payjp = null;
 
 document.addEventListener('turbo:load',  mountPayjp);
@@ -8,37 +9,37 @@ function cleanupPayjp() {
   const form = document.getElementById('charge-form');
   if (!form) return;
 
+  // 送信ハンドラ解除
   if (form._payjpOnSubmit) {
     form.removeEventListener('submit', form._payjpOnSubmit);
     form._payjpOnSubmit = null;
   }
-  ['number-form','expiry-form','cvc-form'].forEach((id) => {
+
+  // Elements のアンマウント（ホストを空に）
+  ['number-form', 'expiry-form', 'cvc-form'].forEach((id) => {
     const host = document.getElementById(id);
     if (host) host.innerHTML = '';
   });
+
+  // トークンの初期化
   const tokenInput = document.getElementById('token');
   if (tokenInput) tokenInput.value = '';
 
-  // リトライカウンタもリセット
+  // フラグ類を初期化
   form.dataset.payjpTries = '';
   form.dataset.payjpReady = '0';
+  form._payjpNumberEl = null;
 }
 
 async function mountPayjp() {
   const form = document.getElementById('charge-form');
   if (!form) return;
 
-  form.dataset.payjpReady = '0';
-  form.dataset.payjpTries = '';
-  const btn0 = form.querySelector('input[type="submit"],button[type="submit"]');
-  if (btn0) btn0.disabled = false;
+  // 1ページ滞在中、重複初期化は避ける（ただしログイン直後などで未準備なら後続で再トライ）
+  form.dataset.payjpReady = form.dataset.payjpReady || '0';
 
-  // 既に初期化済みなら何もしない
-  if (form.dataset.payjpReady === '1' && form._payjpOnSubmit) return;
-
-  // リトライ上限（例: 40回 = 約2秒 50ms間隔）
   const tries = parseInt(form.dataset.payjpTries || '0', 10);
-  if (tries > 120) return;
+  if (tries > 120) return; // 約6秒（50ms * 120）
 
   const pk = document.querySelector('meta[name="payjp-public-key"]')?.content;
 
@@ -50,18 +51,21 @@ async function mountPayjp() {
   }
 
   // ここから初期化
-  if (form._payjpOnSubmit) {
-    form.removeEventListener('submit', form._payjpOnSubmit);
-    form._payjpOnSubmit = null;
-  }
-  ['number-form','expiry-form','cvc-form'].forEach((id) => {
-    const host = document.getElementById(id);
-    if (host) host.innerHTML = '';
-  });
-
   if (!_payjp) _payjp = Payjp(pk);
-  const elements = _payjp.elements();
 
+  const numberHost = document.getElementById('number-form');
+  const expiryHost = document.getElementById('expiry-form');
+  const cvcHost    = document.getElementById('cvc-form');
+  if (!numberHost || !expiryHost || !cvcHost) return;
+
+  // ホストに中身が残っているケース（理論上 before-cache で空になる想定だが保険）
+  if ((numberHost.children.length || expiryHost.children.length || cvcHost.children.length) && !form._payjpNumberEl) {
+    // 一旦空にしてから作り直す
+    [numberHost, expiryHost, cvcHost].forEach((el) => (el.innerHTML = ''));
+  }
+
+  // Elements を作り直し、3分割で mount
+  const elements = _payjp.elements();
   const numberEl = elements.create('cardNumber');
   const expiryEl = elements.create('cardExpiry');
   const cvcEl    = elements.create('cardCvc');
@@ -70,34 +74,31 @@ async function mountPayjp() {
   expiryEl.mount('#expiry-form');
   cvcEl.mount('#cvc-form');
 
-  const onSubmit = async (e) => {
+  // submit ハンドラの取り付け（numberEl をフォームに保持して再利用）
+  form._payjpNumberEl = numberEl;
+  attachSubmitHandler(form);
+
+  form.dataset.payjpReady = '1';
+  form.dataset.payjpTries = '';
+}
+
+function attachSubmitHandler(form) {
+  // 既存があれば外す（重複送信防止）
+  if (form._payjpOnSubmit) {
+    form.removeEventListener('submit', form._payjpOnSubmit);
+    form._payjpOnSubmit = null;
+  }
+
+  const handler = async (e) => {
     e.preventDefault();
     const btn = form.querySelector('input[type="submit"],button[type="submit"]');
     if (btn) btn.disabled = true;
 
     try {
+      const numberEl = form._payjpNumberEl; // mount 時に保存した Element
       const { id, error } = await _payjp.createToken(numberEl);
 
-      if (error) {
-        // 失敗時もサーバに投げて部分テンプレのエラーを表示させる
-        if (btn) btn.disabled = false;
-
-        let tokenInput = document.getElementById('token');
-        if (!tokenInput) {
-          tokenInput = document.createElement('input');
-          tokenInput.type = 'hidden';
-          tokenInput.name = 'order_address[token]';
-          tokenInput.id   = 'token';
-          form.appendChild(tokenInput);
-        }
-        tokenInput.value = '';
-
-        form.removeEventListener('submit', onSubmit);
-        form.submit(); // 422で戻る→エラーメッセージ表示
-        return;
-      }
-
-      // 成功時はトークンを詰める
+      // hidden のトークン要素を確保
       let tokenInput = document.getElementById('token');
       if (!tokenInput) {
         tokenInput = document.createElement('input');
@@ -106,18 +107,27 @@ async function mountPayjp() {
         tokenInput.id   = 'token';
         form.appendChild(tokenInput);
       }
-      tokenInput.value = id;
 
-      form.removeEventListener('submit', onSubmit);
+      if (error) {
+        // 失敗時もサーバへ投げて 422 でエラーパーツ表示
+        if (btn) btn.disabled = false;
+        tokenInput.value = ''; // 空で送ってモデル側の "Token can't be blank" を出す
+        form.removeEventListener('submit', handler);
+        form._payjpOnSubmit = null;
+        form.submit();
+        return;
+      }
+
+      // 成功：トークンを詰めて通常 submit
+      tokenInput.value = id;
+      form.removeEventListener('submit', handler);
+      form._payjpOnSubmit = null;
       form.submit();
     } finally {
-      // 送信しなかったケースだけボタン解除（念のため）
-      // 成功/失敗いずれも submit しているので通常は不要
+      // 成功/失敗の双方で submit 済みのため、ここでボタン解放は不要
     }
   };
 
-  form.addEventListener('submit', onSubmit);
-  form._payjpOnSubmit = onSubmit;
-  form.dataset.payjpReady = '1';
-  form.dataset.payjpTries = '';
+  form.addEventListener('submit', handler);
+  form._payjpOnSubmit = handler;
 }
