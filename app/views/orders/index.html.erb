@@ -26,6 +26,7 @@
     </div>
     <%# /支払額の表示 %>
 
+    <div id="purchase-root" data-turbo-cache="false">
     <%= form_with model: @order_address,
                   url: item_orders_path(@item),
                   id: 'charge-form',
@@ -145,9 +146,6 @@
         </div>
       </div>
       <%# /配送先の入力 %>
-
-      <%# PAY.JPトークン（JSでセット） %>
-      <%= hidden_field_tag :token, nil, id: "token" %>
 
       <div class='buy-btn'>
         <%= f.submit "購入", class: "buy-red-btn", id: "button" %>
