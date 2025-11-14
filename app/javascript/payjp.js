@@ -2,9 +2,9 @@ let _payjp = null;
 
 document.addEventListener('turbo:load',  mountPayjp);
 document.addEventListener('turbo:render', mountPayjp);
+document.addEventListener('turbo:before-cache', cleanupPayjp);
 
-// ← これが重要：ページがキャッシュ保存される直前に“きれいに片付ける”
-document.addEventListener('turbo:before-cache', () => {
+function cleanupPayjp() {
   const form = document.getElementById('charge-form');
   if (!form) return;
 
@@ -12,40 +12,49 @@ document.addEventListener('turbo:before-cache', () => {
     form.removeEventListener('submit', form._payjpOnSubmit);
     form._payjpOnSubmit = null;
   }
-
-  ['number-form', 'expiry-form', 'cvc-form'].forEach((id) => {
+  ['number-form','expiry-form','cvc-form'].forEach((id) => {
     const host = document.getElementById(id);
     if (host) host.innerHTML = '';
   });
-
   const tokenInput = document.getElementById('token');
   if (tokenInput) tokenInput.value = '';
-});
 
-function mountPayjp() {
+  // リトライカウンタもリセット
+  form.dataset.payjpTries = '';
+  form.dataset.payjpReady = '0';
+}
+
+async function mountPayjp() {
   const form = document.getElementById('charge-form');
   if (!form) return;
 
-  // 二重バインド防止
+  // 既に初期化済みなら何もしない
+  if (form.dataset.payjpReady === '1' && form._payjpOnSubmit) return;
+
+  // リトライ上限（例: 40回 = 約2秒 50ms間隔）
+  const tries = parseInt(form.dataset.payjpTries || '0', 10);
+  if (tries > 40) return;
+
+  const pk = document.querySelector('meta[name="payjp-public-key"]')?.content;
+
+  // SDK or 公開鍵が未準備なら少し待って再挑戦
+  if (!pk || !window.Payjp) {
+    form.dataset.payjpTries = String(tries + 1);
+    setTimeout(mountPayjp, 50);
+    return;
+  }
+
+  // ここから初期化
   if (form._payjpOnSubmit) {
     form.removeEventListener('submit', form._payjpOnSubmit);
     form._payjpOnSubmit = null;
   }
-
-  // マウント先を毎回空に
-  ['number-form', 'expiry-form', 'cvc-form'].forEach((id) => {
+  ['number-form','expiry-form','cvc-form'].forEach((id) => {
     const host = document.getElementById(id);
     if (host) host.innerHTML = '';
   });
 
-  // 公開鍵/SDK確認
-  const pk = document.querySelector('meta[name="payjp-public-key"]')?.content;
-  if (!pk || !window.Payjp) return;
-
-  // Payjp本体は使い回しでOK
   if (!_payjp) _payjp = Payjp(pk);
-
-  // ★ elementsは毎回作り直す（ここが肝）
   const elements = _payjp.elements();
 
   const numberEl = elements.create('cardNumber');
@@ -65,9 +74,9 @@ function mountPayjp() {
       const { id, error } = await _payjp.createToken(numberEl);
 
       if (error) {
+        // 失敗時もサーバに投げて部分テンプレのエラーを表示させる
         if (btn) btn.disabled = false;
 
-        // 空トークンを必ず送ってRails側で "Token can't be blank" を表示させる
         let tokenInput = document.getElementById('token');
         if (!tokenInput) {
           tokenInput = document.createElement('input');
@@ -79,11 +88,11 @@ function mountPayjp() {
         tokenInput.value = '';
 
         form.removeEventListener('submit', onSubmit);
-        form.submit(); // 422で戻り、エラーパーツが出る
+        form.submit(); // 422で戻る→エラーメッセージ表示
         return;
       }
 
-      // 成功：トークン格納して通常送信
+      // 成功時はトークンを詰める
       let tokenInput = document.getElementById('token');
       if (!tokenInput) {
         tokenInput = document.createElement('input');
@@ -97,10 +106,13 @@ function mountPayjp() {
       form.removeEventListener('submit', onSubmit);
       form.submit();
     } finally {
-      // 必要ならローディング解除等
+      // 送信しなかったケースだけボタン解除（念のため）
+      // 成功/失敗いずれも submit しているので通常は不要
     }
   };
 
   form.addEventListener('submit', onSubmit);
   form._payjpOnSubmit = onSubmit;
+  form.dataset.payjpReady = '1';
+  form.dataset.payjpTries = '';
 }
