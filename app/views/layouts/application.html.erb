@@ -17,6 +17,8 @@
 
     <!-- 最後に importmap（ここから application.js → payjp.js が実行される） -->
     <%= javascript_importmap_tags %>
+
+    <%= yield :head %>
   </head>
 
   <body>
