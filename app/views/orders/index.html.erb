@@ -25,7 +25,7 @@
     </div>
     <%# /支払額の表示 %>
 
-    <div id="purchase-root" data-turbo-cache="false">
+    <div id="purchase-root" data-turbo-temporary>
       <%= form_with model: @order_address,
                     url: item_orders_path(@item),
                     id: 'charge-form',

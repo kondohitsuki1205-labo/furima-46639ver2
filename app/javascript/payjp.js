@@ -28,12 +28,17 @@ async function mountPayjp() {
   const form = document.getElementById('charge-form');
   if (!form) return;
 
+  form.dataset.payjpReady = '0';
+  form.dataset.payjpTries = '';
+  const btn0 = form.querySelector('input[type="submit"],button[type="submit"]');
+  if (btn0) btn0.disabled = false;
+
   // 既に初期化済みなら何もしない
   if (form.dataset.payjpReady === '1' && form._payjpOnSubmit) return;
 
   // リトライ上限（例: 40回 = 約2秒 50ms間隔）
   const tries = parseInt(form.dataset.payjpTries || '0', 10);
-  if (tries > 40) return;
+  if (tries > 120) return;
 
   const pk = document.querySelector('meta[name="payjp-public-key"]')?.content;
 
